@@ -6,7 +6,7 @@
 /*   By: jkasongo <jkasongo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/06/28 23:23:27 by jkasongo          #+#    #+#             */
-/*   Updated: 2021/06/30 22:28:23 by jkasongo         ###   ########.fr       */
+/*   Updated: 2021/07/01 02:43:28 by jkasongo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,107 +14,83 @@
 
 t_message	g_data;
 
-void	ft_putstr_fd(char *s, int fd)
+void	make_byte(int bit)
 {
-	int	i;
-
-	i = 0;
-	if (s)
-		while (s[i] != '\0')
-			write(fd, &s[i++], 1);
-}
-
-void	ft_putchar_fd(char c, int fd)
-{
-	write(fd, &c, 1);
-}
-
-void	ft_putnbr_fd(int n, int fd)
-{
-	long	nbr;
-
-	nbr = (long)n;
-	if (nbr < 0)
-	{
-		ft_putchar_fd('-', fd);
-		nbr = -nbr;
+	g_data.last_bit = 0;
+	if (g_data.shift_bit < 7)
+	{	
+		g_data.chunk += (bit << g_data.shift_bit);
+		g_data.shift_bit++;
 	}
-	if (nbr > 9)
-		ft_putnbr_fd((nbr / 10), fd);
-	ft_putchar_fd(('0' + (nbr % 10)), fd);
-}
-
-void	ft_recieve_chunks(int i)
-{
-	if (i == 1)
-		g_data.chunk[g_data.chunk_bit] = 1;
 	else
-		g_data.chunk[g_data.chunk_bit] = 0;
-	g_data.chunk_bit++;
+	{
+		g_data.chunk += (bit << 7);
+		g_data.shift_bit = 0;
+		g_data.last_bit = 1;
+	}
 }
 
-void	ft_merge_chunks(void)
+void	ft_merge_chunks(int pid)
 {
-	int		bit;
-	int		multi;
 	char	data;
 
-	data = 0;
-	bit = 0;
-	while (bit < 8)
-	{
-		multi = 1;
-		multi = multi << bit;
-		data += g_data.chunk[bit] * multi;
-		bit++;
-	}
+	data = g_data.chunk;
+	g_data.chunk = 0;
+	g_data.shift_bit = 0;
 	g_data.buffer[g_data.cursor] = data;
+	g_data.sender_pid = pid;
 	g_data.cursor++;
 }
 
-void	signal_handler(int signal)
+void	signal_handler(int signal, siginfo_t *info, void *ctx)
 {
-	int	type;
-	int	cursor;
+	int		type;
+	int		cursor;
 
+	(void)ctx;
 	type = 0;
 	cursor = g_data.cursor;
+	g_data.ended_message = 0;
 	if (signal == SIGUSR1)
 		type = 1;
-	if (g_data.chunk_bit < 7)
-		ft_recieve_chunks(type);
-	else
+	make_byte(type);
+	if (g_data.last_bit)
 	{
-		ft_recieve_chunks(type);
-		g_data.chunk_bit = 0;
-		ft_merge_chunks();
-		if ((cursor >= BUFFER_SIZE - 1) || (g_data.buffer[cursor] == 0))
+		ft_merge_chunks(info->si_pid);
+		if ((cursor >= (BUFFER_SIZE - 1)) || (g_data.buffer[cursor] == 0))
 		{
-			ft_putstr_fd("BUFFER : ", STDOUT_FILENO);
-			g_data.buffer[cursor + 1] = 0;
-			ft_putstr_fd(g_data.buffer, STDOUT_FILENO);
+			write(STDOUT_FILENO, &g_data.buffer, g_data.cursor);
+			if (g_data.buffer[cursor] == 0)
+			{
+				write(STDOUT_FILENO, "\n", 1);
+				g_data.ended_message = 1;
+			}
 			g_data.cursor = 0;
 			g_data.buffer[0] = 0;
 		}
 	}
 }
 
-int		main(void)
+int	main(void)
 {
 	struct sigaction	sa;
 
-	sa.sa_flags = 0;
-	sa.sa_handler = signal_handler;
-	g_data.chunk_bit = 0;
-	g_data.cursor = 0;
+	sa.sa_flags = SA_SIGINFO;
+	sa.sa_sigaction = signal_handler;
+	sa.sa_mask = 0;
 	sigaction(SIGUSR1, &sa, NULL);
 	sigaction(SIGUSR2, &sa, NULL);
-	ft_putstr_fd("Server listening with PID:", STDOUT_FILENO);
+	ft_putstr_fd("Server listening on PID:", STDOUT_FILENO);
 	ft_putnbr_fd(getpid(), STDOUT_FILENO);
 	ft_putchar_fd(10, STDOUT_FILENO);
 	while (1)
 	{
 		pause();
+		if (g_data.ended_message && g_data.sender_pid)
+		{
+			kill(g_data.sender_pid, SIGUSR1);
+			g_data.sender_pid = 0;
+		}
 	}
 	return (0);
 }
