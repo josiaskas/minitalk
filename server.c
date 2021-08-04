@@ -6,7 +6,7 @@
 /*   By: jkasongo <jkasongo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/06/28 23:23:27 by jkasongo          #+#    #+#             */
-/*   Updated: 2021/07/01 02:43:28 by jkasongo         ###   ########.fr       */
+/*   Updated: 2021/08/04 19:39:45 by jkasongo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,11 +86,6 @@ int	main(void)
 	while (1)
 	{
 		pause();
-		if (g_data.ended_message && g_data.sender_pid)
-		{
-			kill(g_data.sender_pid, SIGUSR1);
-			g_data.sender_pid = 0;
-		}
 	}
 	return (0);
 }
