@@ -1,12 +1,12 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   client.c                                           :+:      :+:    :+:   */
+/*   client_bonus.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: jkasongo <jkasongo@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/06/29 01:31:36 by jkasongo          #+#    #+#             */
-/*   Updated: 2021/07/01 02:34:43 by jkasongo         ###   ########.fr       */
+/*   Updated: 2021/08/04 20:00:29 by jkasongo         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ void	send_byte(int pid, char byte)
 void	signal_recieved_data(int signal)
 {
 	if (signal == SIGUSR1)
-		write(STDOUT_FILENO, "\nServeur : message recu\n", 25);
+		write(STDOUT_FILENO, "\nServer : message received\n", 28);
 }
 
 int	main(int argc, char	*argv[])
